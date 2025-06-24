@@ -85,7 +85,7 @@ class ConvFFN(nn.Module):
         return x
 
 
-class MRFP(nn.Module):
+class M3(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None,
                  act_layer=nn.GELU, drop=0.):
         super().__init__()
@@ -128,53 +128,84 @@ class DWConv(nn.Module):
 class MultiDWConv(nn.Module):
     def __init__(self, dim=768):
         super().__init__()
-        dim1 = dim
-        dim = dim // 2
-
-        self.dwconv1 = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv2 = nn.Conv2d(dim, dim, 5, 1, 2, bias=True, groups=dim)
-
-        self.dwconv3 = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv4 = nn.Conv2d(dim, dim, 5, 1, 2, bias=True, groups=dim)
-
-        self.dwconv5 = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv6 = nn.Conv2d(dim, dim, 5, 1, 2, bias=True, groups=dim)
-
-        self.act1 = nn.GELU()
-        self.bn1 = nn.BatchNorm2d(dim1)
-
-        self.act2 = nn.GELU()
-        self.bn2 = nn.BatchNorm2d(dim1)
-
-        self.act3 = nn.GELU()
-        self.bn3 = nn.BatchNorm2d(dim1)
+        dim_quarter = dim // 4  
+        
+        
+        self.dwconv1_3x3 = nn.Conv2d(dim_quarter, dim_quarter, 3, 1, 1, bias=True, groups=dim_quarter)
+        self.dwconv1_5x5 = nn.Conv2d(dim_quarter, dim_quarter, 5, 1, 2, bias=True, groups=dim_quarter)
+        self.dwconv1_7x7 = nn.Conv2d(dim_quarter, dim_quarter, 7, 1, 3, bias=True, groups=dim_quarter)
+        self.dwconv1_9x9 = nn.Conv2d(dim_quarter, dim_quarter, 9, 1, 4, bias=True, groups=dim_quarter)
+        
+        
+        self.dwconv2_3x3 = nn.Conv2d(dim_quarter, dim_quarter, 3, 1, 1, bias=True, groups=dim_quarter)
+        self.dwconv2_5x5 = nn.Conv2d(dim_quarter, dim_quarter, 5, 1, 2, bias=True, groups=dim_quarter)
+        self.dwconv2_7x7 = nn.Conv2d(dim_quarter, dim_quarter, 7, 1, 3, bias=True, groups=dim_quarter)
+        self.dwconv2_9x9 = nn.Conv2d(dim_quarter, dim_quarter, 9, 1, 4, bias=True, groups=dim_quarter)
+        
+        
+        self.dwconv3_3x3 = nn.Conv2d(dim_quarter, dim_quarter, 3, 1, 1, bias=True, groups=dim_quarter)
+        self.dwconv3_5x5 = nn.Conv2d(dim_quarter, dim_quarter, 5, 1, 2, bias=True, groups=dim_quarter)
+        self.dwconv3_7x7 = nn.Conv2d(dim_quarter, dim_quarter, 7, 1, 3, bias=True, groups=dim_quarter)
+        self.dwconv3_9x9 = nn.Conv2d(dim_quarter, dim_quarter, 9, 1, 4, bias=True, groups=dim_quarter)
+        
+        
+        self.act = nn.GELU()  
+        self.bn1 = nn.BatchNorm2d(dim)  
+        self.bn2 = nn.BatchNorm2d(dim)  
+        self.bn3 = nn.BatchNorm2d(dim)  
 
     def forward(self, x, H, W):
         B, N, C = x.shape
         n = N // 21
-        x1 = x[:, 0:16 * n, :].transpose(1, 2).view(B, C, H * 2, W * 2).contiguous()
-        x2 = x[:, 16 * n:20 * n, :].transpose(1, 2).view(B, C, H, W).contiguous()
-        x3 = x[:, 20 * n:, :].transpose(1, 2).view(B, C, H // 2, W // 2).contiguous()
         
-        x11, x12 = x1[:,:C//2,:,:], x1[:,C//2:,:,:]
-        x11 = self.dwconv1(x11)  # BxCxHxW
-        x12 = self.dwconv2(x12)
-        x1 = torch.cat([x11, x12], dim=1)
-        x1 = self.act1(self.bn1(x1)).flatten(2).transpose(1, 2)
         
-
-        x21, x22 = x2[:,:C//2,:,:], x2[:,C//2:,:,:]
-        x21 = self.dwconv3(x21)
-        x22 = self.dwconv4(x22)
-        x2 = torch.cat([x21, x22], dim=1)
-        x2 = self.act2(self.bn2(x2)).flatten(2).transpose(1, 2)
-
-        x31, x32 = x3[:,:C//2,:,:], x3[:,C//2:,:,:]
-        x31 = self.dwconv5(x31)
-        x32 = self.dwconv6(x32)
-        x3 = torch.cat([x31, x32], dim=1)
-        x3 = self.act3(self.bn3(x3)).flatten(2).transpose(1, 2)
-
+        x1 = x[:, 0:16*n, :].transpose(1, 2).view(B, C, H*2, W*2).contiguous()  
+        x2 = x[:, 16*n:20*n, :].transpose(1, 2).view(B, C, H, W).contiguous()    
+        x3 = x[:, 20*n:, :].transpose(1, 2).view(B, C, H//2, W//2).contiguous() 
+        
+       
+        x11 = x1[:, 0*C//4:1*C//4, :, :]
+        x12 = x1[:, 1*C//4:2*C//4, :, :]
+        x13 = x1[:, 2*C//4:3*C//4, :, :]
+        x14 = x1[:, 3*C//4:, :, :]
+        
+        x11 = self.dwconv1_3x3(x11)  # 3x3
+        x12 = self.dwconv1_5x5(x12)  # 5x5
+        x13 = self.dwconv1_7x7(x13)  # 7x7
+        x14 = self.dwconv1_9x9(x14)  # 9x9
+        
+        x1 = torch.cat([x11, x12, x13, x14], dim=1)
+        x1 = self.act(self.bn1(x1)).flatten(2).transpose(1, 2)
+        
+        
+        x21 = x2[:, 0*C//4:1*C//4, :, :]
+        x22 = x2[:, 1*C//4:2*C//4, :, :]
+        x23 = x2[:, 2*C//4:3*C//4, :, :]
+        x24 = x2[:, 3*C//4:, :, :]
+        
+        x21 = self.dwconv2_3x3(x21)
+        x22 = self.dwconv2_5x5(x22)
+        x23 = self.dwconv2_7x7(x23)
+        x24 = self.dwconv2_9x9(x24)
+        
+        x2 = torch.cat([x21, x22, x23, x24], dim=1)
+        x2 = self.act(self.bn2(x2)).flatten(2).transpose(1, 2)
+        
+        
+        x31 = x3[:, 0*C//4:1*C//4, :, :]
+        x32 = x3[:, 1*C//4:2*C//4, :, :]
+        x33 = x3[:, 2*C//4:3*C//4, :, :]
+        x34 = x3[:, 3*C//4:, :, :]
+        
+        x31 = self.dwconv3_3x3(x31)
+        x32 = self.dwconv3_5x5(x32)
+        x33 = self.dwconv3_7x7(x33)
+        x34 = self.dwconv3_9x9(x34)
+        
+        x3 = torch.cat([x31, x32, x33, x34], dim=1)
+        x3 = self.act(self.bn3(x3)).flatten(2).transpose(1, 2)
+        
+    
         x = torch.cat([x1, x2, x3], dim=1)
         return x
 
